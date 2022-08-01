@@ -77,7 +77,7 @@ def run_heuristic(tree_set=None, tree_set_newick=None, inst_num=0, repeats=1, ti
     if progress:
         print(f"Instance {inst_num} {problem_type}: Finish at {now}")
         print(f"Instance {inst_num} {problem_type}: Computation time heuristic: {tree_set.CPS_Compute_Time}")
-        print(f"Instance {inst_num} {problem_type}: Reticulation number = {min(tree_set.RetPerTrial)}")
+        print(f"Instance {inst_num} {problem_type}: Reticulation number = {min(tree_set.RetPerTrial.values())}")
     if pick_ml:
         return tree_set.RetPerTrial, tree_set.DurationPerTrial, seq, df_pred
     else:
