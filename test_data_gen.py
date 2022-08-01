@@ -109,7 +109,7 @@ def make_data_fun(net_num, l=20, exact=False, ret=None, num_trees=None):
                          dtype=float)
     output = {"net": net, "forest": tree_set, "metadata": metadata}
     with open(
-            f"HybridCode/Data/Test/inst_results/tree_data{tree_info}_{net_num}.pickle", "wb") as handle:
+            f"Data/Test/inst_results/tree_data{tree_info}_{net_num}.pickle", "wb") as handle:
         pickle.dump(output, handle)
     now = datetime.now().time()
     if exact:
