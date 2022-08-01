@@ -18,9 +18,9 @@ def sub_tree_to_newick(G, root=None):
 
 def tree_to_newick_fun(tree_set, net_num, network_gen="LGT", partial=False, tree_info=""):
     if partial:
-        file_name = f"HybridCode/Data/Test/TreeSetsNewick/tree_set_newick{tree_info}_part_{net_num}_{network_gen}.txt"
+        file_name = f"Data/Test/TreeSetsNewick/tree_set_newick{tree_info}_part_{net_num}_{network_gen}.txt"
     else:
-        file_name = f"HybridCode/Data/Test/TreeSetsNewick/tree_set_newick{tree_info}_{net_num}_{network_gen}.txt"
+        file_name = f"Data/Test/TreeSetsNewick/tree_set_newick{tree_info}_{net_num}_{network_gen}.txt"
 
     file = open(file_name, "w+")
     for tree in tree_set.values():
