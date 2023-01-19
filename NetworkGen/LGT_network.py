@@ -128,15 +128,15 @@ def internal_and_external_pairs(net):
                     p_both.append(p)
             if p_both[0] == p_both[1]:
                 continue
-            # if grandparent of x is parent of y
-            try:
-                for gp in net.predecessors(p_both[0]):
-                    gp_x = gp
-                if gp_x == p_both[1]:
-                    continue
-            except NameError:
-                pass
-            if is_ret_cherry(net, *pair[::-1]) or is_ret_cherry(net, *pair):
+            # # if grandparent of x is parent of y
+            # try:
+            #     for gp in net.predecessors(p_both[0]):
+            #         gp_x = gp
+            #     if gp_x == p_both[1]:
+            #         continue
+            # except NameError:
+            #     pass
+            if is_ret_cherry(net, *pair):
                 continue
         else:
             pass
