@@ -105,45 +105,46 @@ def run_main(i, l, exact, ret=None, forest_size=None,
     tree_set_newick = f"Data/Test/TreeSetsNewick/tree_set_newick_{file_info}_{i}_LGT.txt"
 
     # ML HEURISTIC
-    ret_score, time_score, seq_ml, df_pred = run_heuristic(
-        tree_set_newick=tree_set_newick,
-        inst_num=i,
-        repeats=1,
-        time_limit=time_limit,
-        pick_ml=True,
-        relabel=True,
-        model_name=model_name,
-        problem_type="ML",
-        full_leaf_set=full_leaf_set,
-        ml_thresh=ml_thresh,
-        progress=progress)
+    # ret_score, time_score, seq_ml, df_pred = run_heuristic(
+    #     tree_set_newick=tree_set_newick,
+    #     inst_num=i,
+    #     repeats=1,
+    #     time_limit=time_limit,
+    #     pick_ml=True,
+    #     relabel=True,
+    #     model_name=model_name,
+    #     problem_type="ML",
+    #     full_leaf_set=full_leaf_set,
+    #     ml_thresh=ml_thresh,
+    #     progress=progress)
 
-    score.loc[i, "RetNum", 0]["ML"] = copy.copy(ret_score[0])
-    score.loc[i, "Time", 0]["ML"] = copy.copy(time_score[0])
-    ml_time = score.loc[i, "Time", 0]["ML"]
-    ml_ret = int(score.loc[i, "RetNum"]["ML"][0])
-    df_seq = pd.concat([df_seq, pd.Series(seq_ml)], axis=1)
+    # score.loc[i, "RetNum", 0]["ML"] = copy.copy(ret_score[0])
+    # score.loc[i, "Time", 0]["ML"] = copy.copy(time_score[0])
+    # ml_time = score.loc[i, "Time", 0]["ML"]
+    # ml_ret = int(score.loc[i, "RetNum"]["ML"][0])
+    # df_seq = pd.concat([df_seq, pd.Series(seq_ml)], axis=1)
 
-    # ML Trivial HEURISTIC
-    ret_score, time_score, seq_ml_triv = run_heuristic(
-        tree_set_newick=tree_set_newick,
-        inst_num=i,
-        repeats=1,
-        time_limit=time_limit,
-        pick_ml_triv=True,
-        relabel=True,
-        model_name=model_name,
-        problem_type="TrivialML",
-        full_leaf_set=full_leaf_set,
-        ml_thresh=ml_thresh,
-        progress=progress)
+    # # ML Trivial HEURISTIC
+    # ret_score, time_score, seq_ml_triv = run_heuristic(
+    #     tree_set_newick=tree_set_newick,
+    #     inst_num=i,
+    #     repeats=1,
+    #     time_limit=time_limit,
+    #     pick_ml_triv=True,
+    #     relabel=True,
+    #     model_name=model_name,
+    #     problem_type="TrivialML",
+    #     full_leaf_set=full_leaf_set,
+    #     ml_thresh=ml_thresh,
+    #     progress=progress)
 
-    score.loc[i, "RetNum", 0]["TrivialML"] = copy.copy(ret_score[0])
-    score.loc[i, "Time", 0]["TrivialML"] = copy.copy(time_score[0])
-    ml_triv_ret = int(score.loc[i, "RetNum"]["TrivialML"][0])
-    df_seq = pd.concat([df_seq, pd.Series(seq_ml_triv)], axis=1)
+    # score.loc[i, "RetNum", 0]["TrivialML"] = copy.copy(ret_score[0])
+    # score.loc[i, "Time", 0]["TrivialML"] = copy.copy(time_score[0])
+    # ml_triv_ret = int(score.loc[i, "RetNum"]["TrivialML"][0])
+    # df_seq = pd.concat([df_seq, pd.Series(seq_ml_triv)], axis=1)
 
     # RANDOM HEURISTIC
+    ml_time = 10**3
     ret_score, time_score, seq_ra = run_heuristic(
         tree_set_newick=tree_set_newick,
         inst_num=i,
@@ -235,4 +236,11 @@ if __name__ == "__main__":
     else:
         ml_thresh = None
 
+    print(f'{i=}')
+    print(f'{l=}')
+    print(f'{exact=}')
+    print(f'{ret=}')
+    print(f'{forest_size=}')
+    print(f'{ml_name=}')
+    
     run_main(i, l, exact, ret, forest_size, ml_name=ml_name, full_leaf_set=True, ml_thresh=ml_thresh, progress=True)

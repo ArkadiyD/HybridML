@@ -9,6 +9,7 @@ import pickle
 import time
 import sys
 
+from NetworkGen.network_containtment import *
 '''
 Code used for generating test instances
 '''
@@ -32,6 +33,7 @@ def make_data_fun(net_num, l=20, exact=False, ret=None, num_trees=None):
     if exact:
         n = l - 2 + ret
         trials_per_n = 50
+        print('exact')
         print(f"JOB {net_num} ({now}): Start creating NETWORK (In-Sample, L = {l}, R = {ret}, n = {n})")
         while True:
             if l <= 20:
@@ -62,14 +64,14 @@ def make_data_fun(net_num, l=20, exact=False, ret=None, num_trees=None):
         max_ret = int(min([5*np.ceil(np.log2(num_trees)), 60]))
         ret = np.random.randint(min_ret, max_ret)
         n = l - 2 + ret     # preferably a reticulation number of at least 3 + minimum
-        print(min_ret, ret, max_ret)
+        #print(min_ret, ret, max_ret)
         trials_per_n = 20
         print(f"JOB {net_num} ({now}): Start creating NETWORK (Out-of-Sample, L = {l}, T = {num_trees}, n = {n})")
         while True:
             alpha = np.random.uniform(0.3, 0.5)
             net, ret_num = simulation(n, alpha, 1, beta, ret)
             num_leaves = len(leaves(net))
-            print(ret, ret_num, num_leaves, alpha)
+            #print(ret, ret_num, num_leaves, alpha)
             if num_leaves == l:
                 break
             else:
@@ -91,8 +93,16 @@ def make_data_fun(net_num, l=20, exact=False, ret=None, num_trees=None):
     else:
         print(f"JOB {net_num} ({now}): Start creating TREE SET (L = {num_leaves}, T = {num_trees}, R = {ret_num})")
 
+    net_copy = deepcopy(net)
     tree_set, tree_lvs = net_to_tree(net, num_trees, distances=distances, net_lvs=num_leaves)
-
+    print('tree lvs', tree_lvs)
+    for tree_index in tree_set:
+        net_ = deepcopy(net_copy)
+        tree = deepcopy(tree_set[tree_index])
+        network_containtment(net_, net_)
+        print('-'*100)
+        TCNContains(net_, net_)
+    
     if num_trees is None:
         num_trees = 2 ** ret_num
 
@@ -107,6 +117,7 @@ def make_data_fun(net_num, l=20, exact=False, ret=None, num_trees=None):
                           len(tree_set), n, alpha, beta, time.time() - st],
                          index=metadata_index,
                          dtype=float)
+    print('-'*100)
     output = {"net": net, "forest": tree_set, "metadata": metadata}
     with open(
             f"Data/Test/inst_results/tree_data{tree_info}_{net_num}.pickle", "wb") as handle:

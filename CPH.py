@@ -212,7 +212,7 @@ class Input_Set:
             self.trees = {t: PhT(tree) for t, tree in tree_set.items()}
             self.leaves = leaves
             self.labels = {l: l for l in self.leaves}
-
+        print(len(self.trees))
         if full_leaf_set:
             self.unique_leaves = self.leaves
         else:
@@ -222,7 +222,7 @@ class Input_Set:
                     continue
                 self.unique_leaves = tree.leaves.intersection(self.unique_leaves)
         self.num_leaves = len(self.unique_leaves)
-
+        print(f'{self.num_leaves=}')
         # make a reverse dictionary for the leaf labels, to look up the label of a given node
         for l, i in self.labels.items():
             self.labels_reversed[i] = l
@@ -278,6 +278,7 @@ class Input_Set:
                 print(f"Instance {self.instance} {problem_type}: found sequence of length: {len(new)}")
             # COMPLETE PARTIAL SEQUENCE
             new, reduced_trees = sequence_add_roots(new, reduced_trees)
+            print(new)
             if progress:
                 print(f"Instance {self.instance} {problem_type}: length after completing sequence: {len(new)}")
 
