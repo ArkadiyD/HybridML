@@ -9,6 +9,7 @@ import copy
 
 # return reticulation nodes
 def reticulations(G):
+    print([G.in_degree(v) for v in G.nodes()])
     return [v for v in G.nodes() if G.in_degree(v) == 2]
 
 
@@ -27,6 +28,7 @@ def net_to_tree(net, num_trees=None, distances=True, partial=False, net_lvs=None
     # we only consider binary networks here
     tree_set = dict()
     rets = reticulations(net)
+    print('rets', rets)
     ret_num = len(rets)
     if net_lvs is not None:
         tree_lvs = []
@@ -37,6 +39,7 @@ def net_to_tree(net, num_trees=None, distances=True, partial=False, net_lvs=None
         ret_dels_tmp = itertools.product(*[np.arange(2)]*ret_num)
         ret_dels = None
         for opt in ret_dels_tmp:
+            #print(opt)
             opt = np.array(opt).reshape([1, -1])
             try:
                 ret_dels = np.vstack([ret_dels, opt])
@@ -50,12 +53,14 @@ def net_to_tree(net, num_trees=None, distances=True, partial=False, net_lvs=None
             its +=1
         ret_dels = np.array([list(opt) for opt in ret_dels_set])
 
+    #print(ret_dels)
     t = 0
     for opt in ret_dels:
         if opt[0] is None:
             continue
         tree = copy.deepcopy(net)
         for i in np.arange(ret_num):
+            #print(i, ret_num)
             if opt[i] is None:
                 continue
             ret = rets[i]
@@ -180,6 +185,9 @@ def net_to_tree(net, num_trees=None, distances=True, partial=False, net_lvs=None
             print("Bad tree after partial")
             if net_lvs is not None:
                 tree_lvs.pop(-1)
+
+       # print(len(tree_set))
+
     if net_lvs is not None:
         return tree_set, np.array(tree_lvs)
     else:

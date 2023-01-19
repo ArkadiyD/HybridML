@@ -24,6 +24,10 @@ def tree_to_newick_fun(tree_set, net_num, network_gen="LGT", partial=False, tree
 
     file = open(file_name, "w+")
     for tree in tree_set.values():
+        #print(tree)
+        #for x, y in tree.edges: 
+        #    print(x, y)
+
         tree_line = sub_tree_to_newick(tree, 0)
         file.write(tree_line)
         file.write("\n")
