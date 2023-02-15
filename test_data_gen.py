@@ -13,7 +13,7 @@ from NetworkGen.network_containtment import *
 '''
 Code used for generating test instances
 '''
-
+from TreeWidthTreeContainment import BOTCH
 
 def make_data_fun(net_num, l=20, exact=False, ret=None, num_trees=None):
     # PARAMS OF LGT GENERATOR
@@ -94,14 +94,41 @@ def make_data_fun(net_num, l=20, exact=False, ret=None, num_trees=None):
         print(f"JOB {net_num} ({now}): Start creating TREE SET (L = {num_leaves}, T = {num_trees}, R = {ret_num})")
 
     net_copy = deepcopy(net)
+    #print(net_copy.edges, net.nodes)
     tree_set, tree_lvs = net_to_tree(net, num_trees, distances=distances, net_lvs=num_leaves)
-    print('tree lvs', tree_lvs)
-    for tree_index in tree_set:
-        net_ = deepcopy(net_copy)
-        tree = deepcopy(tree_set[tree_index])
-        network_containtment(net_, net_)
-        print('-'*100)
-        TCNContains(net_, net_)
+    #print(net.edges, net.nodes)
+    #exit(0)
+    for ind in tree_set:
+        for n in tree_set[ind].nodes():
+            if tree_set[ind].in_degree[n] == 0:
+                print(tree_set[ind].out_degree[n])
+                tree_set[ind].add_edge(1000,n)
+                break
+        print(tree_set[ind].nodes)
+    for n in net_copy.nodes():
+        if net_copy.in_degree[n] == 0:
+            print(net_copy.out_degree[n])
+            net_copy.add_edge(1000,n)
+            break
+    print(net_copy.nodes, net_copy.edges)
+
+    for tree in tree_set.values():
+        #print(tree.edges, net_copy.edges, tree.nodes, net_copy.nodes)
+        T = deepcopy(tree)
+        N = deepcopy(net_copy)
+        print('nodes',T.nodes, T.edges)
+        #T.add_edge(-1,0)
+        #N.add_edge(-1,0)
+        res = BOTCH.tc_brute_force(T, N)
+        print(res)
+
+    # print('tree lvs', tree_lvs)
+    # for tree_index in tree_set:
+    #     net_ = deepcopy(net_copy)
+    #     tree = deepcopy(tree_set[tree_index])
+    #     network_containtment(net_, net_)
+    #     print('-'*100)
+    #     TCNContains(net_, net_)
     
     if num_trees is None:
         num_trees = 2 ** ret_num
