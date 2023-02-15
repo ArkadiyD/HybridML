@@ -118,32 +118,37 @@ def internal_and_external_pairs(net):
     mapping = compute_hash(net)
     internal_pairs = []
     external_pairs = []
-    for pair in pairs:
-        # check if pair has same parent node
-        if net.in_degree(pair[0]) == 1 and net.in_degree(pair[1]) == 1:
-            # same parent not allowed
-            p_both = []
-            for l in pair:
-                for p in net.predecessors(l):
-                    p_both.append(p)
-            if p_both[0] == p_both[1]:
-                continue
-            # # if grandparent of x is parent of y
-            # try:
-            #     for gp in net.predecessors(p_both[0]):
-            #         gp_x = gp
-            #     if gp_x == p_both[1]:
-            #         continue
-            # except NameError:
-            #     pass
-            if is_ret_cherry(net, *pair):
-                continue
+    print("again")
+    for x, y in net.edges:
+        print(x, y)
+    print()
+    for p1, p2 in pairs:
+        # parent of p1
+        for p in net.predecessors(p1):
+            p_p1 = p
+        # parent of p2
+        for p in net.predecessors(p2):
+            p_p2 = p
+
+        # same parent not allowed
+        if p_p1 == p_p2:
+            continue
+        # tree-child
+        # parent node needs at least one non reticulation node
+        # 1. check if parent of p2 is a reticulation node
+        if net.in_degree(p_p2) == 2:
+            continue
+        # 2. check if other child of parent of p2 is a reticulation node
+        for ch in net.successors(p_p2):
+            if ch != p2:
+                break
+        if net.in_degree(ch) == 2:
+            continue
+
+        if mapping[p1] == mapping[p2]:
+            internal_pairs.append((p1, p2))
         else:
-            pass
-        if mapping[pair[0]] == mapping[pair[1]]:
-            internal_pairs.append(pair)
-        else:
-            external_pairs.append(pair)
+            external_pairs.append((p1, p2))
     return internal_pairs, external_pairs
 
 
@@ -155,7 +160,10 @@ def random_leaf(net):
 # return a random pair of leaves from the network
 def random_pair(net, wint, wext):
     int_pairs, ext_pairs = internal_and_external_pairs(net)
-    return random.choices(int_pairs+ext_pairs, weights=[wint]*len(int_pairs)+[wext]*len(ext_pairs))[0]
+    if len(int_pairs) + len(ext_pairs):
+        return random.choices(int_pairs+ext_pairs, weights=[wint]*len(int_pairs)+[wext]*len(ext_pairs))[0]
+    else:
+        return None
 
 
 # SIMULATION
@@ -170,20 +178,21 @@ def simulation(num_steps, prob_lgt, wint, wext, ret=None):
     net.add_edge(0, 2, length=np.random.random())
     num_ret = 0
     for i in range(num_steps):
-        if len(net.nodes) == 3:
-            event = "spec"
-        elif ret is not None and num_ret == ret:
-            event = "spec"
-        else:
-            event = random.choices(['spec', 'lgt'], [1-prob_lgt, prob_lgt])[0]
+        # Restrictions to event type
+        event = random.choices(['spec', 'lgt'], [1-prob_lgt, prob_lgt])[0]
+
+        # Perform event
         if event == 'spec':
             l = random.choice(leaves(net))
             speciate(net, l)
         else:
-            num_ret += 1
             pair = random_pair(net, wint, wext)
-            # change length of highest hanging leaf to lowest hanging leaf. Only then we can have an LGT event.
-            lgt(net, pair[0], pair[1])
+            if pair is None:
+                l = random.choice(leaves(net))
+                speciate(net, l)
+            else:
+                num_ret += 1
+                lgt(net, *pair)
     return net, num_ret
 
 

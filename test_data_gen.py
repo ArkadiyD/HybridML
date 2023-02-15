@@ -32,7 +32,6 @@ def make_data_fun(net_num, l=20, exact=False, ret=None, num_trees=None):
     network_gen_st = time.time()
     if exact:
         n = l - 2 + ret
-        trials_per_n = 50
         print('exact')
         print(f"JOB {net_num} ({now}): Start creating NETWORK (In-Sample, L = {l}, R = {ret}, n = {n})")
         while True:
@@ -42,21 +41,12 @@ def make_data_fun(net_num, l=20, exact=False, ret=None, num_trees=None):
                 alpha = np.random.uniform(0.1, 0.3)
             else:
                 alpha = np.random.uniform(0.1, 0.2)
-            net, ret_num = simulation(n, alpha, 1, beta, ret)
+            net, ret_num = simulation(n, alpha, 1, beta)
             num_leaves = len(leaves(net))
             if num_leaves == l and ret_num == ret:
                 break
             else:
-                if trials_per_n:
-                    trials_per_n -= 1
-                else:
-                    trials_per_n = 20
-                    n += 1
-                    print(f"JOB {net_num} ({now}): Start creating NETWORK (In-Sample, L = {l}, R = {ret}, n = {n})")
-
-            if time.time() - network_gen_st > 60*1:
-                print(f"JOB {net_num} ({now}): FAILED (In-Sample, L = {l}, R = {ret}, n = {n})")
-                return None
+                print(f"JOB {net_num} ({now}): NETWORK GEN FAILED, again (In-Sample, L = {l}, R = {ret}, n = {n})")
 
     else:
         # randomize reticulation!
@@ -93,6 +83,8 @@ def make_data_fun(net_num, l=20, exact=False, ret=None, num_trees=None):
     else:
         print(f"JOB {net_num} ({now}): Start creating TREE SET (L = {num_leaves}, T = {num_trees}, R = {ret_num})")
 
+    for x, y in net.edges:
+        print(x, y)
     net_copy = deepcopy(net)
     #print(net_copy.edges, net.nodes)
     tree_set, tree_lvs = net_to_tree(net, num_trees, distances=distances, net_lvs=num_leaves)
@@ -119,8 +111,8 @@ def make_data_fun(net_num, l=20, exact=False, ret=None, num_trees=None):
         print('nodes',T.nodes, T.edges)
         #T.add_edge(-1,0)
         #N.add_edge(-1,0)
-        res = BOTCH.tc_brute_force(T, N)
-        print(res)
+        # res = BOTCH.tc_brute_force(T, N)
+        # print(res)
 
     # print('tree lvs', tree_lvs)
     # for tree_index in tree_set:
