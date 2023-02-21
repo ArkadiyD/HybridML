@@ -1,3 +1,21 @@
+import random
+from copy import deepcopy
+from gcnn import *
+from stable_baselines3.common.utils import get_device
+from stable_baselines3.common.torch_layers import BaseFeaturesExtractor, FlattenExtractor
+from stable_baselines3.common.policies import ActorCriticPolicy
+from stable_baselines3.common.type_aliases import Schedule
+import torch.nn as nn
+import pickle
+import dgl
+from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
+from stable_baselines3 import PPO
+from stable_baselines3.common.env_util import make_vec_env
+from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv
+from stable_baselines3.common.env_checker import check_env
+from gym import spaces
+import torch
+import gym
 from datetime import datetime
 import pandas as pd
 import numpy as np
@@ -5,9 +23,17 @@ import copy
 import sys
 import csv
 import warnings
+
+from myppo import PPOWithAuxLoss
+from mymaskableppo import MyMaskablePPO
 from TreeWidthTreeContainment import BOTCH
 import networkx as nx
 import CPH
+from utils import *
+from sb3_contrib.ppo_mask import MaskablePPO
+from sb3_contrib.common.wrappers import ActionMasker
+from simplepolicygradient import SimplePolicyGradient
+from graph_env import GraphEnv
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
@@ -32,137 +58,43 @@ else:
 EXAMPLE: 
 python main_heuristic.py 0 N10_maxL100_random_balanced 20 0 50
 '''
-import gym
-import torch
-from gym import spaces
-from stable_baselines3.common.env_checker import check_env
-from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv
-from stable_baselines3.common.env_util import make_vec_env
-import numpy as np
-from stable_baselines3 import PPO
 
-import gym
-from gym import spaces
-import numpy as np
+def mask_fn(env: gym.Env) -> np.ndarray:
+    # Do whatever you'd like in this function to return the action mask
+    # for the current env. In this example, we assume the env has a
+    # helpful method we can rely on.
+	cur_picked_nodes = env.currently_picked_nodes
+	#print(cur_picked_nodes)
+	return get_next_legal_nodes(env.network.nw, cur_picked_nodes)
 
-
-from stable_baselines3 import PPO
-from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
-
-import dgl
-import numpy as np
-import pickle
-import torch.nn as nn
-
-from stable_baselines3 import PPO
-from stable_baselines3.common.type_aliases import Schedule
-from stable_baselines3.common.policies import ActorCriticPolicy
-from stable_baselines3.common.torch_layers import BaseFeaturesExtractor, FlattenExtractor
-from stable_baselines3.common.utils import get_device
-
-from gcnn import *
-
-class GraphEnv(gym.Env):
-	def __init__(self, network, tree_set):
-		N = len(network.nw.nodes)
-		self.initial_network = deepcopy(network)
-		self.tree_set = deepcopy(tree_set)
-		self.network = network
-		self.action_space = spaces.MultiDiscrete([N,N,N,N])
-		self.observation_space = gym.spaces.Box(low=0, high=1, shape=(N,N), dtype=int)
-
-		self.num_moves = 0
-		self.moves_ub = 100
-		self.window = None
-		self.clock = None
-		self.N = N 
-		self.ret_baseline = self.network.ret_number()
-		print(f'{self.ret_baseline=}')
-		print(self.tree_set.trees)
-		print(self.network.num_trees_contained(self.tree_set.trees))
-
-	def reset(self):
-		# We need the following line to seed self.np_random
-		self.network = deepcopy(self.initial_network)
-		self.num_moves = 0
-
-		observation = self._get_obs()        
-		return observation
-
-	def render(self):
-		return None
-	
-	def _render_frame(self):
-		return None
-
-	def _get_obs(self):
-		matrix = np.zeros((self.N, self.N), dtype=np.int32)
-		for a,b in self.network.nw.edges:
-			matrix[a,b] = 1
-		return matrix
-
-	def _get_info(self):
-		return {}
-
-	def step(self, action):
-		#print('trees_contained', self.network.num_trees_contained(self.tree_set.trees), len(self.tree_set.trees))
-		info = self._get_info()
-		self.num_moves += 1
-		if self.num_moves >= self.moves_ub:
-			terminated = True
-		else:
-			terminated = False
-
-		#perform move
-		u,v,s,t = list(action)
-		#r1 = self.network.check_edges_exist(u,v,s,t)
-		#print(r1)
-		self.network.tail_move(u,v, s,t)
-
-		#calculate reward
-		#for x in self.network.nx
-		reward = 0
-		trees_contained = self.network.num_trees_contained(self.tree_set.trees)
-		
-		if terminated:
-			if trees_contained < len(self.tree_set.trees.values()):
-				reward = trees_contained - len(self.tree_set.trees.values())
-			else:
-				ret_number = self.network.ret_number()
-				reward = self.ret_baseline - ret_number
-			print(reward)
-
-		observation = self._get_obs()
-		#print(f'{action=},{reward=}')
-
-		return observation, reward, terminated, info
-
-
-from stable_baselines3.common.env_checker import check_env
 def run_search(network, tree_set):
 	print('starting search')
 	env = GraphEnv(network, tree_set)
-	print("sample observation:", env.observation_space.sample())
-	print("sample action:", env.action_space.sample())
+	env = ActionMasker(env, mask_fn)
 
-	network.get_legal_moves()
-	exit(0)
+	for k in range(15):
+		#print("sample observation:", env.observation_space.sample())
+	#net
+		action = env.action_space.sample()
+		print(get_next_legal_nodes(env.network.nw, env.obs()['picked_nodes']))
+		print("sample action:", action)
+		env.step(action)
+	#network.get_legal_moves()
 	check_env(env)
-	
-	model = PPO(ActorCriticGnnPolicy, env, verbose=1, tensorboard_log="my_tbdir/", policy_kwargs={"simple":True})
-	model.learn(total_timesteps=10**5)
-
-
-from copy import deepcopy
-import random
+	#exit(0)
+	#model = MyMaskablePPO(ActorCriticGnnPolicy, env, verbose=1,
+	#					   tensorboard_log="my_tbdir/", policy_kwargs={"simple": False, "legal_checker":get_next_legal_nodes})
+	#model.learn(total_timesteps=10**5)
+	model = SimplePolicyGradient(env, mask_function=mask_fn)
+	model.learn()
 
 def run_heuristic(tree_set=None, tree_set_newick=None, inst_num=0, repeats=1, time_limit=None,
 				  progress=False,  reduce_trivial=False, pick_ml=False, pick_ml_triv=False,
 				  pick_random=False, model_name=None, relabel=False, relabel_cher_triv=False, problem_type="",
 				  full_leaf_set=True, ml_thresh=None):
 	# READ TREE SET
-	np.random.seed(42)
-	random.seed(42)
+	np.random.seed(43)
+	random.seed(43)
 
 	now = datetime.now().time()
 	if progress:
@@ -180,7 +112,8 @@ def run_heuristic(tree_set=None, tree_set_newick=None, inst_num=0, repeats=1, ti
 		f.close()
 
 		# Make the set of inputs usable for all algorithms: use the CPH class
-		tree_set = CPH.Input_Set(newick_strings=inputs, instance=inst_num, full_leaf_set=full_leaf_set)
+		tree_set = CPH.Input_Set(
+			newick_strings=inputs, instance=inst_num, full_leaf_set=full_leaf_set)
 
 	# RUN HEURISTIC CHERRY PICKING SEQUENCE
 	# Run the heuristic to find a cherry-picking sequence `seq' for the set of input trees.
@@ -202,12 +135,15 @@ def run_heuristic(tree_set=None, tree_set_newick=None, inst_num=0, repeats=1, ti
 	now = datetime.now().time()
 	if progress:
 		print(f"Instance {inst_num} {problem_type}: Finish at {now}")
-		print(f"Instance {inst_num} {problem_type}: Computation time heuristic: {tree_set.CPS_Compute_Time}")
-		print(f"Instance {inst_num} {problem_type}: Reticulation number = {min(tree_set.RetPerTrial.values())}")
+		print(
+			f"Instance {inst_num} {problem_type}: Computation time heuristic: {tree_set.CPS_Compute_Time}")
+		print(
+			f"Instance {inst_num} {problem_type}: Reticulation number = {min(tree_set.RetPerTrial.values())}")
 	if pick_ml:
 		return tree_set.RetPerTrial, tree_set.DurationPerTrial, seq, df_pred
 	else:
 		return tree_set.RetPerTrial, tree_set.DurationPerTrial, seq
+
 
 def run_main(i, l, exact, ret=None, forest_size=None,
 			 repeats=1, time_limit=None, ml_name=None, full_leaf_set=True, ml_thresh=None, progress=False):
@@ -222,7 +158,8 @@ def run_main(i, l, exact, ret=None, forest_size=None,
 	model_name = f"LearningCherries/RFModels/rf_cherries_{ml_name}.joblib"
 	# save results
 	score = pd.DataFrame(
-		index=pd.MultiIndex.from_product([[i], ["RetNum", "Time"], np.arange(repeats)]),
+		index=pd.MultiIndex.from_product(
+			[[i], ["RetNum", "Time"], np.arange(repeats)]),
 		columns=["ML", "TrivialML", "Rand", "TrivialRand", "UB"], dtype=float)
 	df_seq = pd.DataFrame()
 	env_info_file = f"Data/Test/inst_results/tree_data_{file_info}_{i}.pickle"
@@ -230,7 +167,7 @@ def run_main(i, l, exact, ret=None, forest_size=None,
 	tree_set_newick = f"Data/Test/TreeSetsNewick/tree_set_newick_{file_info}_{i}_LGT.txt"
 	print(tree_set_newick)
 	#########
-	#read trees
+	# read trees
 	# Read each line of the input file with name set by "option_file_argument"
 	inputs = []
 	f = open(tree_set_newick, "rt")
@@ -239,9 +176,10 @@ def run_main(i, l, exact, ret=None, forest_size=None,
 		inputs.append(str(row[0]))
 	f.close()
 	# Make the set of inputs usable for all algorithms: use the CPH class
-	tree_set = CPH.Input_Set(newick_strings=inputs, instance=i, full_leaf_set=full_leaf_set)
+	tree_set = CPH.Input_Set(newick_strings=inputs,
+							 instance=i, full_leaf_set=full_leaf_set)
 
-	#run heuristic to construct initial network
+	# run heuristic to construct initial network
 	ret_score, time_score, seq_ra = run_heuristic(
 		tree_set=tree_set,
 		tree_set_newick=None,
@@ -254,46 +192,36 @@ def run_main(i, l, exact, ret=None, forest_size=None,
 		full_leaf_set=full_leaf_set,
 		progress=progress)
 	initial_network = CPH.PhN(seq=seq_ra)
-	print('seq',seq_ra, initial_network.labels)
-	print(tree_set.trees[0].nw.edges, tree_set.trees[0].leaves, tree_set.labels_reversed)
-	#for x in tree_set.labels_reversed:
-	#    tree_set.labels_reversed[x] = int(tree_set.labels_reversed[x])
-	#for x in initial_network.labels:
-	#    initial_network.labels[int(x)] = initial_network.labels[x]
-	
+	print('seq', seq_ra, initial_network.labels)
+	print(tree_set.trees[0].nw.edges,
+		  tree_set.trees[0].leaves, tree_set.labels_reversed)
+	print(initial_network.nw.nodes, initial_network.labels)
 	for t in tree_set.trees:
-		#print(tree_set.trees[t].nw.nodes)
-		nx.relabel_nodes(tree_set.trees[t].nw, tree_set.labels_reversed, copy=False)
-		#print(tree_set.trees[t].nw.nodes)
-		nx.relabel_nodes(tree_set.trees[t].nw, initial_network.labels, copy=False)
-		#print(tree_set.trees[t].nw.nodes)
-		
-	for tree in tree_set.trees.values():
-		#print(tree)
-		print(tree.nw.edges, tree.nw.nodes)
-		print(initial_network.nw.edges, initial_network.nw.nodes)
-		root_nw = None
-		for x in initial_network.nw.nodes:
-			if initial_network.nw.in_degree[x] == 0:
-				print(x)
-				root_nw = x
-		root_tree = None
-		for x in tree.nw.nodes:
-			if tree.nw.in_degree[x] == 0:
-				print(x)
-				root_tree = x
+		# print(tree_set.trees[t].nw.nodes)
+		nx.relabel_nodes(tree_set.trees[t].nw,
+						 tree_set.labels_reversed, copy=False)
+		print(tree_set.trees[t].nw.nodes)
+		nx.relabel_nodes(tree_set.trees[t].nw,
+						 initial_network.labels, copy=False)
+		print(tree_set.trees[t].nw.nodes)
 
+	for tree in tree_set.trees.values():
 		T = deepcopy(tree.nw)
 		N = deepcopy(initial_network.nw)
-		#T.add_edge(1000, root_tree)
-		#N.add_edge(1000,root_nw)
-		print(N.edges, N.nodes)
-		#res = BOTCH.tc_brute_force(T, N)
-		res = BOTCH.tc_brute_force(T,N)
-		assert res==True
+		print('nodes', T.nodes, T.edges)
+		# for edge in T.edges:
+		#print('nodes nw',N.nodes, N.edges)
+		#	print(edge[0], edge[1])
+		# for edge in N.edges:
+		#print('nodes nw',N.nodes, N.edges)
+		#	print(edge[0], edge[1])
+		res = BOTCH.tc_brute_force(T, N, add_dummy=False)
+		print(res)
+		assert res == True
 
-	#exit(0)
+	# exit(0)
 	run_search(initial_network, tree_set)
+
 
 if __name__ == "__main__":
 	i = int(sys.argv[1])
@@ -321,5 +249,6 @@ if __name__ == "__main__":
 	print(f'{ret=}')
 	print(f'{forest_size=}')
 	print(f'{ml_name=}')
-	
-	run_main(i, l, exact, ret, forest_size, ml_name=ml_name, full_leaf_set=True, ml_thresh=ml_thresh, progress=True)
+
+	run_main(i, l, exact, ret, forest_size, ml_name=ml_name,
+			 full_leaf_set=True, ml_thresh=ml_thresh, progress=True)

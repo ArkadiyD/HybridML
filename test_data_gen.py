@@ -90,29 +90,14 @@ def make_data_fun(net_num, l=20, exact=False, ret=None, num_trees=None):
     tree_set, tree_lvs = net_to_tree(net, num_trees, distances=distances, net_lvs=num_leaves)
     #print(net.edges, net.nodes)
     #exit(0)
-    for ind in tree_set:
-        for n in tree_set[ind].nodes():
-            if tree_set[ind].in_degree[n] == 0:
-                print(tree_set[ind].out_degree[n])
-                tree_set[ind].add_edge(1000,n)
-                break
-        print(tree_set[ind].nodes)
-    for n in net_copy.nodes():
-        if net_copy.in_degree[n] == 0:
-            print(net_copy.out_degree[n])
-            net_copy.add_edge(1000,n)
-            break
     print(net_copy.nodes, net_copy.edges)
 
     for tree in tree_set.values():
-        #print(tree.edges, net_copy.edges, tree.nodes, net_copy.nodes)
         T = deepcopy(tree)
         N = deepcopy(net_copy)
         print('nodes',T.nodes, T.edges)
-        #T.add_edge(-1,0)
-        #N.add_edge(-1,0)
-        # res = BOTCH.tc_brute_force(T, N)
-        # print(res)
+        res = BOTCH.tc_brute_force(T, N, add_dummy=True)
+        print(res)
 
     # print('tree lvs', tree_lvs)
     # for tree_index in tree_set:
