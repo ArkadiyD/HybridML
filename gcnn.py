@@ -230,31 +230,32 @@ class ActorCriticGnnPolicy(MaskableActorCriticPolicy):
 
 	def extract_features_gnn(self, obs):
 		graph = obs['graph']
-		picked_nodes = obs['picked_nodes'].long()
-		
-		batch_size = graph.shape[0]
+		picked_nodes = obs['picked_nodes']
+
 		all_data = []
+		all_features = []
+		#print('graph',graph.shape, picked_nodes.shape)
+		batch_size = graph.shape[0]
 		for k in range(batch_size):
+			#print(k)
+			graph = torch.tensor(obs['graph'][k]).long()
+			picked_nodes = torch.tensor(obs['picked_nodes'][k]).long()
+			#print(graph.shape, picked_nodes.shape)
+
 			edge_index = []
-			#for i in range(graph.shape[1]):
-			#	for j in range(graph.shape[2]):
-			#		if graph[k, i, j] == 1:
-			#			edge_index.append((i, j))
-			#ind = torch.nonzero(graph[k])
-			#print(ind, ind.shape)
-
-			edge_index = torch.nonzero(graph[k]).long()
-			# print(edge_index.shape)
+			
+			edge_index = torch.nonzero(graph).long()
 			edge_index = edge_index.t().contiguous()
-			# print(edge_index.shape)
-			cur_features = torch.zeros((graph[k].shape[0], 4))
-			for i, picked in enumerate(picked_nodes[k]):
-				#print(i,picked,cur_features.shape)
-				cur_features[picked.item(), i] = 1
-			#print(cur_features)
-
+			cur_features = torch.zeros((graph.shape[0], 4))
+			for i, picked in enumerate(picked_nodes):
+				if picked.item() >= 0:
+					cur_features[picked.item(), i] = 1
 			all_data.append(Data(x=torch.tensor(cur_features).float(), edge_index=edge_index))
+			all_features.append(cur_features.view(1,-1))
+
+		#print(len(all_data))
 		features = Batch.from_data_list(data_list = all_data).cuda()
+		#all_features = torch.cat(all_features).view(len(all_data),-1).cuda()
 		return features
 
 	def extract_features_simple(self, obs):
@@ -299,8 +300,8 @@ class ActorCriticGnnPolicy(MaskableActorCriticPolicy):
 		:return: action, value and log probability of the action
 		"""
 		# Preprocess the observation if needed
-		print(f'{action_masks=}')
-		print('picked_nodes', obs['picked_nodes'])
+		#print(f'{action_masks=}')
+		#print('picked_nodes', obs['picked_nodes'])
 
 		features = self.extract_features(obs)
 		latent_pi, latent_vf = self.gnn_extractor(features)
@@ -387,5 +388,6 @@ class ActorCriticGnnPolicy(MaskableActorCriticPolicy):
 		latent_vf = self.gnn_extractor.forward_critic(features)
 		print('values', latent_vf.shape, latent_vf)
 		return self.value_net(latent_vf)
+
 
 

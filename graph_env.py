@@ -132,3 +132,67 @@ class GraphEnv(gym.Env):
 
 		return observation, reward, terminated, info
 
+
+class GraphEnvLearnLegalMoves(GraphEnv):
+	def step(self, action):
+		#print('trees_contained', self.network.num_trees_contained(self.tree_set.trees), len(self.tree_set.trees))
+		
+		info = self._get_info()
+		self.num_moves += 1
+		if self.num_moves >= self.moves_ub:
+			terminated = True
+		else:
+			terminated = False
+
+		# perform move
+		reward = 0
+		
+		x = action
+		self.currently_picked_nodes.append(x)
+		
+		if len(self.currently_picked_nodes) < 4:
+			is_legal = check_if_move_is_legal(self.network.nw, self.currently_picked_nodes)
+			if not is_legal:
+				reward = -1
+				self.currently_picked_nodes = []
+			else:
+				reward = 1
+				
+		elif len(self.currently_picked_nodes) == 4:
+			u, v, s, t = list(self.currently_picked_nodes)
+			is_legal = check_if_move_is_legal(self.network.nw, self.currently_picked_nodes)
+			
+			if not is_legal:
+				reward = -1
+			else:
+				self.network.tail_move(u, v, s, t)
+
+				# calculate reward
+				# for x in self.network.nx
+				reward = 10
+				# trees_contained = self.network.num_trees_contained(
+				# 	self.tree_set.trees)
+				# n_trees = len(self.tree_set.trees.values())
+				# if trees_contained < n_trees:
+				# 	# 0(all contained) : 1 (no contained)
+				# 	reward = (n_trees - trees_contained) / float(n_trees)
+				# 	reward = -reward+1.1  # -0.1 (no contained) : 1.1 (all_contained)
+				# else:
+				# 	ret_number = self.network.ret_number()
+				# 	reward = 2.2 - ret_number / \
+				# 		float(self.ret_baseline)  # [1.2;2] #lower is better
+				# print(reward)
+				terminated = True
+
+			self.currently_picked_nodes = []
+			
+		#if reward <  0:
+		#	terminated = True
+
+		reward = float(reward) #+ len(self.currently_picked_nodes)
+		observation = self._get_obs()
+		print(reward, self.currently_picked_nodes)
+		
+
+		return observation, reward, terminated, info
+

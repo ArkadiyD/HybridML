@@ -33,7 +33,7 @@ from utils import *
 from sb3_contrib.ppo_mask import MaskablePPO
 from sb3_contrib.common.wrappers import ActionMasker
 from simplepolicygradient import SimplePolicyGradient
-from graph_env import GraphEnv
+from graph_env import GraphEnv, GraphEnvLearnLegalMoves
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
@@ -65,28 +65,40 @@ def mask_fn(env: gym.Env) -> np.ndarray:
     # helpful method we can rely on.
 	cur_picked_nodes = env.currently_picked_nodes
 	#print(cur_picked_nodes)
-	return get_next_legal_nodes(env.network.nw, cur_picked_nodes)
+	nodes = [1 for i in env.network.nw.nodes]
+	#return get_next_legal_nodes(env.network.nw, cur_picked_nodes)
+	return nodes
 
 def run_search(network, tree_set):
 	print('starting search')
-	env = GraphEnv(network, tree_set)
+	env = GraphEnvLearnLegalMoves(network, tree_set)
 	env = ActionMasker(env, mask_fn)
 
-	for k in range(15):
-		#print("sample observation:", env.observation_space.sample())
-	#net
-		action = env.action_space.sample()
-		print(get_next_legal_nodes(env.network.nw, env.obs()['picked_nodes']))
-		print("sample action:", action)
-		env.step(action)
+	# for k in range(15):
+	# 	#print("sample observation:", env.observation_space.sample())
+	# #net
+	# 	legal_moves = get_next_legal_nodes(env.network.nw, env.obs()['picked_nodes'])
+	# 	legal_moves = legal_moves.astype(np.int32)
+	# 	print(legal_moves)
+	# 	N = env.get_obs()['graph'].shape[0]
+	# 	probs = np.array([1/float(N) for x in range(N)])
+	# 	if np.sum(legal_moves) > 0:
+	# 		probs[legal_moves==0] = 0
+	# 		probs /= np.sum(probs)
+	# 	print(env._get_obs()['picked_nodes'])
+	# 	print(probs)
+	# 	action = torch.multinomial(torch.tensor(probs).float(), 1).item()
+	# 	print("sample action:", action)
+	# 	_,reward,_,_ = env.step(action)
+	# 	print(f'{reward=}')
 	#network.get_legal_moves()
 	check_env(env)
 	#exit(0)
-	#model = MyMaskablePPO(ActorCriticGnnPolicy, env, verbose=1,
-	#					   tensorboard_log="my_tbdir/", policy_kwargs={"simple": False, "legal_checker":get_next_legal_nodes})
-	#model.learn(total_timesteps=10**5)
-	model = SimplePolicyGradient(env, mask_function=mask_fn)
-	model.learn()
+	model = MyMaskablePPO(ActorCriticGnnPolicy, env, verbose=1,
+						   tensorboard_log="my_tbdir/", policy_kwargs={"simple": False, "legal_checker":get_next_legal_nodes})
+	model.learn(total_timesteps=10**5)
+	#model = SimplePolicyGradient(env, mask_function=None)
+	#model.learn()
 
 def run_heuristic(tree_set=None, tree_set_newick=None, inst_num=0, repeats=1, time_limit=None,
 				  progress=False,  reduce_trivial=False, pick_ml=False, pick_ml_triv=False,

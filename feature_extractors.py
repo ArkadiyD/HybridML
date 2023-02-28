@@ -22,12 +22,12 @@ class GNNExtractor(nn.Module):
         device = get_device(device)
         shared_net, policy_net, value_net = [], [], []
         # Layer sizes of the network that only belongs to the policy network
-        policy_only_layers = [64]
+        policy_only_layers = [41]
         # Layer sizes of the network that only belongs to the value network
-        value_only_layers = [64]
-        last_layer_dim_shared = 64
+        value_only_layers = [41]
+        last_layer_dim_shared = 41
 
-        self.shared_net = GIN(num_features=4)
+        self.shared_net = GATExtractor(num_features=4)
         print(self.shared_net)
 
         last_layer_dim_pi = last_layer_dim_shared
@@ -92,11 +92,11 @@ class GNNSimpleExtractor(nn.Module):
         device = get_device(device)
         shared_net, policy_net, value_net = [], [], []
         # Layer sizes of the network that only belongs to the policy network
-        policy_only_layers = [64]
+        policy_only_layers = [41]
         # Layer sizes of the network that only belongs to the value network
-        value_only_layers = [64]
+        value_only_layers = [41]
         # Layer sizes of the network that only belongs to the value network
-        shared_layers = [64, 64]
+        shared_layers = [41, 41]
 
         shared_net = []
         print(shared_net)
@@ -207,19 +207,19 @@ class GIN(nn.Module):
             elif isinstance(m, nn.BatchNorm1d):
                 m.reset_parameters()
 
-    def forward(self, data):
+    def forward(self, all_data):
         # if len(data.shape) == 2:
         #	data = torch.unsqueeze(data,0)
         # print(data.shape)
-
+        
         x = data.x
         edge_index = data.edge_index
         batch = data.batch
         #print(x, edge_index, batch)
-
+        print('-'*20)
         outs = [x]
         for i in range(self.num_layers):
-            #print(i, x.shape)
+            print(i, x.shape)
             x = self.convs[i](x, edge_index)
             x = self.bns[i](x)
             x = F.relu(x)
@@ -229,20 +229,138 @@ class GIN(nn.Module):
         # for k in outs:
         #	print(k.shape)
         #print(len(outs), outs[0].shape)
-
+        print('outs')
         out = None
         for i, x in enumerate(outs):
-            # print(i,x.shape)
+            print(i,x.shape)
             x = global_add_pool(x, batch)
-            # print(x.shape)
+            print(x.shape)
             x = F.dropout(self.fcs[i](x), p=self.dropout,
                           training=self.training)
             if out is None:
                 out = x
             else:
                 out += x
-        #print('out', out.shape)
+        print('final out', out.shape)
         if self.out_layer is not None:
             out = self.final_layer(out)
         return out
         # return F.log_softmax(out, dim=-1), 0
+
+
+from torch_geometric.nn import GCNConv
+
+class GCN(torch.nn.Module):
+    def __init__(self, num_nodes, num_features, out_layer = None):
+        super().__init__()
+        self.num_nodes = num_nodes
+        self.num_features = num_features
+        self.out_layer = out_layer
+        self.latent_dim = 16
+
+        self.conv1 = GCNConv(num_features, self.latent_dim)
+        self.conv2 = GCNConv(self.latent_dim, 1)
+        #self.linear = nn.Linear(self.num_nodes*self.latent_dim + num_nodes*4, 64)
+        #self.linear2 = nn.Linear(64, out_layer)
+        self.linear = nn.Linear(self.num_nodes, self.num_nodes)
+
+    def forward(self, all_data):
+        #print(all_data)
+        data, aux_features = all_data[0], all_data[1]
+        
+        x, edge_index = data.x, data.edge_index
+        #batch = x.batch
+        #print(data.batch)
+        print('0',x.shape)
+
+        batch = data.batch[-1]+1
+        #print(x)
+        #print(edge_index)
+        x = self.conv1(x, edge_index)
+        x = F.relu(x)
+        #x = F.dropout(x, training=self.training)
+        
+        x = self.conv2(x, edge_index)
+        #x = F.relu(x)
+        #x = F.dropout(x, training=self.training)
+        
+        #print('2', x.shape)
+        #x = F.log_softmax(x, dim=1)
+        #print('3', x.shape)
+        x =  x.view(batch, -1) 
+        #aux_features =  aux_features.view(batch, -1) 
+        #print(x.shape, aux_features.shape)
+        #x = torch.cat([x, aux_features], dim=1)
+        #x = F.dropout(x, training=self.training)
+        #x = F.relu(self.linear(x))
+        #x = self.linear2(x)
+        
+        #print(x.shape)
+        #x = self.linear(x)
+        #print('4',x.shape)
+        
+        return x
+
+from torch_geometric.nn import GATConv
+
+class GATExtractor(torch.nn.Module):
+    def __init__(self, num_features, out_layer = None):
+        super().__init__()
+        self.num_features = num_features
+        self.out_layer = out_layer
+        self.latent_dim = 41
+
+        self.conv1 = GATConv(num_features, self.latent_dim)
+        self.conv2 = GATConv(self.latent_dim, 1)
+        
+    def forward(self, data):
+        x, edge_index = data.x, data.edge_index
+
+        batch = data.batch[-1]+1
+        x = self.conv1(x, edge_index)
+        x = F.relu(x)
+        
+        x = self.conv2(x, edge_index)
+        x = F.relu(x)
+        
+        #print(x.shape)
+        x=  x.view(batch, -1) 
+        #print(x.shape)
+        
+        return x
+
+class GAT(torch.nn.Module):
+    def __init__(self, num_nodes, num_features, out_layer = None):
+        super().__init__()
+        self.num_nodes = num_nodes
+        self.num_features = num_features
+        self.out_layer = out_layer
+        self.latent_dim = 16
+
+        self.conv1 = GATConv(num_features, self.latent_dim)
+        self.conv2 = GATConv(self.latent_dim, 1)
+        #self.linear = nn.Linear(self.num_nodes*self.latent_dim + num_nodes*4, 64)
+        #self.linear2 = nn.Linear(64, out_layer)
+        self.linear = nn.Linear(self.num_nodes, self.num_nodes)
+
+    def forward(self, all_data):
+        data, aux_features = all_data[0], all_data[1]        
+        x, edge_index = data.x, data.edge_index
+        #print('0',x.shape)
+
+        batch = data.batch[-1]+1
+        x = self.conv1(x, edge_index)
+        #print(x.shape, x.min(), x.max())
+        x = F.relu(x)
+        #x = F.dropout(x, training=self.training)
+        
+        x = self.conv2(x, edge_index)
+        #x = F.relu(x)
+        #x = F.dropout(x, training=self.training)
+        
+        #print('2', x.shape)
+        #x = F.log_softmax(x, dim=1)
+        #print('3', x.shape)
+        x =  x.view(batch, -1) 
+
+        return x

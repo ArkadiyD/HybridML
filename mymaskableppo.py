@@ -78,7 +78,7 @@ class MyMaskablePPO(OnPolicyAlgorithm):
         self,
         policy: Union[str, Type[MaskableActorCriticPolicy]],
         env: Union[GymEnv, str],
-        learning_rate: Union[float, Schedule] = 3e-4,
+        learning_rate: Union[float, Schedule] = 1e-2,
         n_steps: int = 2048,
         batch_size: Optional[int] = 64,
         n_epochs: int = 10,
@@ -442,6 +442,7 @@ class MyMaskablePPO(OnPolicyAlgorithm):
                         values - rollout_data.old_values, -clip_range_vf, clip_range_vf
                     )
                 # Value loss using the TD(gae_lambda) target
+                #print('returns', rollout_data.returns)
                 value_loss = F.mse_loss(rollout_data.returns, values_pred)
                 value_losses.append(value_loss.item())
 
@@ -538,6 +539,9 @@ class MyMaskablePPO(OnPolicyAlgorithm):
                 if len(self.ep_info_buffer) > 0 and len(self.ep_info_buffer[0]) > 0:
                     self.logger.record("rollout/ep_rew_mean", safe_mean([ep_info["r"] for ep_info in self.ep_info_buffer]))
                     self.logger.record("rollout/ep_len_mean", safe_mean([ep_info["l"] for ep_info in self.ep_info_buffer]))
+                    rs = np.array([ep_info["r"] for ep_info in self.ep_info_buffer])
+                    self.logger.record("rollout/pos_rew", np.where(rs > 0)[0].shape[0]/float(len(rs)))
+                    
                 self.logger.record("time/fps", fps)
                 self.logger.record("time/time_elapsed", int(time_elapsed), exclude="tensorboard")
                 self.logger.record("time/total_timesteps", self.num_timesteps, exclude="tensorboard")
