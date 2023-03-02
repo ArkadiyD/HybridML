@@ -38,7 +38,7 @@ def get_legal_moves(net):
         for e2 in net.edges:
             u, v = e1
             x, y = e2
-            if check_if_move_is_legal(net, u, v, x, y):
+            if check_if_move_is_legal(net, [u, v, x, y]):
                 legal_moves.append((u, v, x, y))
     print(len(net.nodes), len(net.nodes) **
             4, len(net.edges), len(legal_moves))
@@ -65,9 +65,17 @@ def check_if_move_is_legal(net_, picked_nodes):
     if len(set(picked_nodes)) != len(picked_nodes):
         return False
     
+    in_degrees = [net.in_degree(x) for x in picked_nodes if x >= 0]    
+    out_degrees = [net.out_degree(x) for x in picked_nodes if x >= 0]    
+    if np.min(in_degrees) == 0:
+        return False
+
     if len(picked_nodes) == 1:
-        return True
-    
+        if net.out_degree(picked_nodes[0]) == 0:
+            return False
+        else:
+            return True
+
     u,v = picked_nodes[0], picked_nodes[1]
 
     if (u, v) not in net.edges:
@@ -86,7 +94,10 @@ def check_if_move_is_legal(net_, picked_nodes):
         return True
     #print('3')
     if len(picked_nodes) == 3:
-        return True
+        if net.out_degree(picked_nodes[2]) == 0:
+            return False
+        else:
+            return True
 
     s,t = picked_nodes[2], picked_nodes[3]
 

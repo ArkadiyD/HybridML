@@ -66,8 +66,14 @@ class GraphEnv(gym.Env):
 		picked_nodes = deepcopy(self.currently_picked_nodes)
 		while len(picked_nodes) < 4:
 			picked_nodes.append(-1)
+		
+		#sorted_nodes = sorted(self.network.nw.nodes)
+		#in_degrees = np.array([self.network.nw.in_degree(x) for x in sorted_nodes]).reshape(-1,1)
+		#out_degrees = np.array([self.network.nw.out_degree(x) for x in sorted_nodes]).reshape(-1,1)
 
-		return {'graph':matrix, 'picked_nodes':np.array(picked_nodes)}
+		#features = np.vstack([in_degrees, out_degrees])
+
+		return {'graph':matrix, 'picked_nodes':np.array(picked_nodes)}#, 'features':features}
 
 	def obs(self):
 		return self._get_obs()
@@ -114,14 +120,16 @@ class GraphEnv(gym.Env):
 				trees_contained = self.network.num_trees_contained(
 					self.tree_set.trees)
 				n_trees = len(self.tree_set.trees.values())
-				if trees_contained < n_trees:
-					# 0(all contained) : 1 (no contained)
-					reward = (n_trees - trees_contained) / float(n_trees)
-					reward = -reward  # -1 (no contained) : 0 (all_contained)
-				else:
-					ret_number = self.network.ret_number()
-					reward = 1.0 - ret_number / \
-						float(self.ret_baseline)  # [0;1] #lower is better
+				print(trees_contained, n_trees)
+				#self.network.print_network()
+				#if trees_contained < n_trees:
+				#	# 0(all contained) : 1 (no contained)
+				#	reward = (n_trees - trees_contained) / float(n_trees)
+				#	reward = -reward  # -1 (no contained) : 0 (all_contained)
+				#else:
+				#	ret_number = self.network.ret_number()
+				#	reward = 1.0 - ret_number / \
+				#		float(self.ret_baseline)  # [0;1] #lower is better
 				# print(reward)
 			self.currently_picked_nodes = []
 

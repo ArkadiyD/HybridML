@@ -67,7 +67,7 @@ def newick_to_tree(newick, current_labels=dict()):
         # tree.add_edges_from(edges)
         tree.add_weighted_edges_from(edges, weight='length')
     add_node_attributes(tree, distances=distances, root=2)
-    print(tree, leaves, current_labels)
+    print('newick to tree', tree, leaves, current_labels)
     return tree, leaves, current_labels, distances
 
 
@@ -898,6 +898,10 @@ class PhN:
     def ret_number(self):
         return np.sum(self.reticulations_non_binary())
 
+    def print_network(self):
+        for x,y in self.nw.edges:
+            print(x,y)
+            
     def num_trees_contained(self, trees):
         trees_contained = 0
         for tree in trees.values():
@@ -906,7 +910,7 @@ class PhN:
                     deepcopy(tree.nw), deepcopy(self.nw))
                 trees_contained += int(res)
             except Exception as e:
-                pass
+                print(e)
         return trees_contained
 
     # Adds a pair to the network, using the construction from a cherry-picking sequence

@@ -88,6 +88,8 @@ class ActorCriticGnnPolicy(MaskableActorCriticPolicy):
 			optimizer_kwargs=optimizer_kwargs,
 			squash_output=squash_output,
 		)
+		self.num_features = 6
+
 		self.simple = simple
 		self.legal_checker = legal_checker
 		print(f'{simple=}')
@@ -133,6 +135,7 @@ class ActorCriticGnnPolicy(MaskableActorCriticPolicy):
 
 		self._build(lr_schedule)
 
+		
 	def _get_constructor_parameters(self) -> Dict[str, Any]:
 		data = super()._get_constructor_parameters()
 
@@ -177,7 +180,7 @@ class ActorCriticGnnPolicy(MaskableActorCriticPolicy):
 		#       net_arch here is an empty list and mlp_extractor does not
 		#       really contain any layers (acts like an identity module).
 		if not self.simple:
-			self.gnn_extractor = GNNExtractor().cuda()
+			self.gnn_extractor = GNNExtractor(self.N, self.num_features).cuda()
 		else:
 			self.gnn_extractor = GNNSimpleExtractor(self.N*2+4).cuda()
 
@@ -218,8 +221,8 @@ class ActorCriticGnnPolicy(MaskableActorCriticPolicy):
 		loss = torch.nn.BCELoss()
 		# for k in range(1000):
 		#	x = np.random.randint()
-		print(self.value_net)
-		print(self.action_net)
+		print('value net', self.value_net)
+		print('action net', self.action_net)
 		# exit(0)
 
 	def extract_features(self, obs):
@@ -250,6 +253,16 @@ class ActorCriticGnnPolicy(MaskableActorCriticPolicy):
 			for i, picked in enumerate(picked_nodes):
 				if picked.item() >= 0:
 					cur_features[picked.item(), i] = 1
+			
+			#print(obs['graph'][k])
+			in_degree = torch.sum(obs['graph'][k],dim=0)
+			out_degree = torch.sum(obs['graph'][k],dim=1)
+			aux_features = torch.cat([in_degree.view(-1,1), out_degree.view(-1,1)], dim=1).cpu()
+
+			#print(in_degree)
+			#print(out_degree)
+			cur_features = torch.cat([cur_features, aux_features], dim=1)
+			#print(cur_features.shape)
 			all_data.append(Data(x=torch.tensor(cur_features).float(), edge_index=edge_index))
 			all_features.append(cur_features.view(1,-1))
 

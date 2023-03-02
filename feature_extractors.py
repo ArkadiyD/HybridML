@@ -12,6 +12,8 @@ import torch.nn.functional as F
 class GNNExtractor(nn.Module):
     def __init__(
         self,
+        n_nodes,
+        num_features,
         #	feature_dim: int,
         #	net_arch: List[Union[int, Dict[str, List[int]]]],
         #	activation_fn: Type[nn.Module],
@@ -22,12 +24,12 @@ class GNNExtractor(nn.Module):
         device = get_device(device)
         shared_net, policy_net, value_net = [], [], []
         # Layer sizes of the network that only belongs to the policy network
-        policy_only_layers = [41]
+        policy_only_layers = [n_nodes]
         # Layer sizes of the network that only belongs to the value network
-        value_only_layers = [41]
-        last_layer_dim_shared = 41
+        value_only_layers = [n_nodes]
+        last_layer_dim_shared = n_nodes
 
-        self.shared_net = GATExtractor(num_features=4)
+        self.shared_net = GATExtractor(num_features=num_features)
         print(self.shared_net)
 
         last_layer_dim_pi = last_layer_dim_shared
@@ -68,7 +70,7 @@ class GNNExtractor(nn.Module):
         """
         #print(f'{features=}')
         shared_latent = self.shared_net(features)
-        # print(f'{shared_latent=}')
+        #print('shared_latent', shared_latent.shape)
         return self.policy_net(shared_latent), self.value_net(shared_latent)
 
     def forward_actor(self, features: torch.Tensor) -> torch.Tensor:
@@ -141,10 +143,10 @@ class GNNSimpleExtractor(nn.Module):
         self.policy_net = nn.Sequential(*policy_net).to(device)
         self.value_net = nn.Sequential(*value_net).to(device)
         self.aux_head = nn.Linear(last_layer_dim_shared, 1)
-        print(self.shared_net)
-        print(self.policy_net)
-        print(self.value_net)
-        print(self.aux_head)
+        print('shared_net',self.shared_net)
+        print('policy_net',self.policy_net)
+        print('value_net',self.value_net)
+        #print(self.aux_head)
         #exit(0)
 
     def forward(self, features: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -308,7 +310,7 @@ class GATExtractor(torch.nn.Module):
         super().__init__()
         self.num_features = num_features
         self.out_layer = out_layer
-        self.latent_dim = 41
+        self.latent_dim = 32
 
         self.conv1 = GATConv(num_features, self.latent_dim)
         self.conv2 = GATConv(self.latent_dim, 1)

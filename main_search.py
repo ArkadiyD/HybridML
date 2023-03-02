@@ -35,6 +35,10 @@ from sb3_contrib.common.wrappers import ActionMasker
 from simplepolicygradient import SimplePolicyGradient
 from graph_env import GraphEnv, GraphEnvLearnLegalMoves
 
+from NetworkGen.NetworkToTree import *
+from NetworkGen.LGT_network import *
+from NetworkGen.tree_to_newick import *
+
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 '''
@@ -60,18 +64,20 @@ python main_heuristic.py 0 N10_maxL100_random_balanced 20 0 50
 '''
 
 def mask_fn(env: gym.Env) -> np.ndarray:
-    # Do whatever you'd like in this function to return the action mask
-    # for the current env. In this example, we assume the env has a
-    # helpful method we can rely on.
+	# Do whatever you'd like in this function to return the action mask
+	# for the current env. In this example, we assume the env has a
+	# helpful method we can rely on.
 	cur_picked_nodes = env.currently_picked_nodes
 	#print(cur_picked_nodes)
-	nodes = [1 for i in env.network.nw.nodes]
-	#return get_next_legal_nodes(env.network.nw, cur_picked_nodes)
+	#nodes = [1 for i in env.network.nw.nodes]
+	#print(nodes)
+	nodes = get_next_legal_nodes(env.network.nw, cur_picked_nodes)
+	#print(nodes)
 	return nodes
 
 def run_search(network, tree_set):
 	print('starting search')
-	env = GraphEnvLearnLegalMoves(network, tree_set)
+	env = GraphEnv(network, tree_set)
 	env = ActionMasker(env, mask_fn)
 
 	# for k in range(15):
@@ -91,7 +97,7 @@ def run_search(network, tree_set):
 	# 	print("sample action:", action)
 	# 	_,reward,_,_ = env.step(action)
 	# 	print(f'{reward=}')
-	#network.get_legal_moves()
+	get_legal_moves(network.nw)
 	check_env(env)
 	#exit(0)
 	model = MyMaskablePPO(ActorCriticGnnPolicy, env, verbose=1,
@@ -99,6 +105,28 @@ def run_search(network, tree_set):
 	model.learn(total_timesteps=10**5)
 	#model = SimplePolicyGradient(env, mask_function=None)
 	#model.learn()
+
+def generate_random_network(ret, l):
+	beta = 1
+	distances = True
+
+	# make network
+	n = l - 2 + ret
+	print(f"JOB: Start creating NETWORK (In-Sample, L = {l}, R = {ret}, n = {n})")
+	while True:
+		if l <= 20:
+			alpha = np.random.uniform(0.1, 0.5)
+		elif l <= 50:
+			alpha = np.random.uniform(0.1, 0.3)
+		else:
+			alpha = np.random.uniform(0.1, 0.2)
+		net, ret_num = simulation(n, alpha, 1, beta)
+		num_leaves = len(leaves(net))
+		if num_leaves == l and ret_num == ret:
+			break
+		else:
+			print(f"JOB: NETWORK GEN FAILED, again (In-Sample, L = {l}, R = {ret}, n = {n})")
+	return net
 
 def run_heuristic(tree_set=None, tree_set_newick=None, inst_num=0, repeats=1, time_limit=None,
 				  progress=False,  reduce_trivial=False, pick_ml=False, pick_ml_triv=False,
@@ -188,10 +216,10 @@ def run_main(i, l, exact, ret=None, forest_size=None,
 		inputs.append(str(row[0]))
 	f.close()
 	# Make the set of inputs usable for all algorithms: use the CPH class
+	# run heuristic to construct initial network
 	tree_set = CPH.Input_Set(newick_strings=inputs,
 							 instance=i, full_leaf_set=full_leaf_set)
 
-	# run heuristic to construct initial network
 	ret_score, time_score, seq_ra = run_heuristic(
 		tree_set=tree_set,
 		tree_set_newick=None,
@@ -203,35 +231,64 @@ def run_main(i, l, exact, ret=None, forest_size=None,
 		relabel=False,
 		full_leaf_set=full_leaf_set,
 		progress=progress)
-	initial_network = CPH.PhN(seq=seq_ra)
-	print('seq', seq_ra, initial_network.labels)
-	print(tree_set.trees[0].nw.edges,
-		  tree_set.trees[0].leaves, tree_set.labels_reversed)
-	print(initial_network.nw.nodes, initial_network.labels)
-	for t in tree_set.trees:
-		# print(tree_set.trees[t].nw.nodes)
-		nx.relabel_nodes(tree_set.trees[t].nw,
-						 tree_set.labels_reversed, copy=False)
-		print(tree_set.trees[t].nw.nodes)
-		nx.relabel_nodes(tree_set.trees[t].nw,
-						 initial_network.labels, copy=False)
-		print(tree_set.trees[t].nw.nodes)
+	print(seq_ra)
+	#exit(0)
 
-	for tree in tree_set.trees.values():
-		T = deepcopy(tree.nw)
-		N = deepcopy(initial_network.nw)
-		print('nodes', T.nodes, T.edges)
-		# for edge in T.edges:
-		#print('nodes nw',N.nodes, N.edges)
-		#	print(edge[0], edge[1])
-		# for edge in N.edges:
-		#print('nodes nw',N.nodes, N.edges)
-		#	print(edge[0], edge[1])
-		res = BOTCH.tc_brute_force(T, N, add_dummy=False)
-		print(res)
-		assert res == True
+	#ret_score = np.min(list(ret_score.values()))-1
+	initial_network = generate_random_network(ret+2, l)
+	
+	#for x in initial_network.nodes:
+	#	if initial_network.out_degree[x] == 0:
+	#		print('leave', x)
+	#		nx.relabel_nodes(tree_set.trees[t].nw, lambda x:int(x), copy=False)
 
+	#print(initial_network.edges)
+	#print(initial_network)
+	
+	# network = CPH.PhN(seq=seq_ra)
+	# # print('seq', seq_ra, initial_network.labels)
+	# # print(tree_set.trees[0].nw.edges,
+	# # 	  tree_set.trees[0].leaves, tree_set.labels_reversed)
+	# print(network.nw.nodes, network.labels)
 	# exit(0)
+
+	rename_leaves = {}
+	i = 0
+	network_leaves = [x for x in initial_network.nodes if initial_network.out_degree(x) == 0]
+	for x in tree_set.trees:
+		cnt = 0
+		#print(len(tree_set.trees[x].nw.nodes), tree_set.trees[x].nw.nodes)
+		for leaf in network_leaves:
+			if leaf in tree_set.trees[x].nw.nodes:
+				nx.relabel_nodes(tree_set.trees[x].nw, {leaf:np.max(tree_set.trees[x].nw.nodes)+1}, copy=False) #rename nodes in the tree which are in the leaves set of the network
+
+		tree_leaves_ = [i for i in tree_set.trees[x].nw.nodes if tree_set.trees[x].nw.out_degree(i) == 0]
+		not_leaves_ = [i for i in tree_set.trees[x].nw.nodes if tree_set.trees[x].nw.out_degree(i) > 0]
+		
+		print(len(tree_leaves_), tree_leaves_, not_leaves_, set(not_leaves_).intersection(set(network_leaves)))
+		
+		for leaf in tree_leaves_: #rename leaves in the tree to match the leaves set of the network
+			nx.relabel_nodes(tree_set.trees[x].nw, {leaf:network_leaves[cnt]}, copy=False)
+			cnt += 1
+			print([i for i in tree_set.trees[x].nw.nodes if tree_set.trees[x].nw.out_degree(i) == 0])
+		
+		tree_leaves_ = [i for i in tree_set.trees[x].nw.nodes if tree_set.trees[x].nw.out_degree(i) == 0]
+		assert sorted(tree_leaves_) == sorted(network_leaves)
+
+	tree_leaves = [x for x in tree_set.trees[0].nw.nodes if tree_set.trees[0].nw.out_degree(x) == 0]
+
+	print(initial_network.out_degree)
+	print(tree_leaves, network_leaves)
+	print(initial_network.nodes)
+	
+	assert min(initial_network.nodes) == 0
+	assert max(initial_network.nodes) == len(initial_network.nodes)-1
+	
+	#exit(0)
+	initial_network = PhN(net=initial_network)
+	initial_network.print_network()		
+	exit(0)
+	
 	run_search(initial_network, tree_set)
 
 
